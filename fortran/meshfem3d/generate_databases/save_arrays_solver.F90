@@ -75,13 +75,75 @@ module save_arrays_module
 
   end subroutine save_global_arrays_with_components
 
+  subroutine save_boundary_arrays(num_faces, spec_boundary, ijk_boundary, &
+                            jacobian2Dw_boundary, normal_boundary)
+
+    use constants, only: IOUT, CUSTOM_REAL
+    implicit none
+
+    integer, intent(in) :: num_faces
+    integer :: iface
+    integer, dimension(:), intent(in) :: spec_boundary
+    integer, dimension(:,:,:), intent(in) :: ijk_boundary
+    real(kind=CUSTOM_REAL), dimension(:,:), intent(in) :: jacobian2Dw_boundary
+    real(kind=CUSTOM_REAL), dimension(:,:,:), intent(in) :: normal_boundary
+
+    ! Save the spec_boundary array
+    write(iout) spec_boundary
+
+    ! save the ijk_boundary array
+    do iface = 1, num_faces
+      write(iout) ijk_boundary(:, :, iface)
+    end do
+
+    ! save the jacobian2dw_boundary array
+    do iface = 1, num_faces
+      write(iout) jacobian2dw_boundary(:, iface)
+    end do
+
+    ! save the normal_boundary array
+    do iface = 1, num_faces
+      write(iout) normal_boundary(:, :, iface)
+    end do
+
+  end subroutine save_boundary_arrays
+
+  ! subroutine that converts a logical array to an integer array and writes it
+  ! a file IOUT (see save_global_arrays)
+  subroutine save_logical_nspec_array(array)
+
+    use constants, only: IOUT
+    use generate_databases_par, only: nspec => NSPEC_AB
+
+    logical, dimension(nspec), intent(in) :: array
+
+    integer, dimension(nspec) :: array_int
+
+    integer :: i
+
+    do i = 1, nspec
+      if (array(i)) then
+        array_int(i) = 1
+      else
+        array_int(i) = 0
+      endif
+    enddo
+
+    write(IOUT) array_int
+
+  end subroutine save_logical_nspec_array
+
   end module save_arrays_module
 ! for external mesh
 
   subroutine save_arrays_solver_mesh()
 
   use constants, only: IMAIN,IOUT,myrank
-  use save_arrays_module, only: save_global_arrays, save_global_arrays_with_components
+  use save_arrays_module, only: &
+    save_global_arrays, &
+    save_global_arrays_with_components, &
+    save_logical_nspec_array, &
+    save_boundary_arrays
 
   use shared_parameters, only: ACOUSTIC_SIMULATION, ELASTIC_SIMULATION, POROELASTIC_SIMULATION, &
     APPROXIMATE_OCEAN_LOAD, SAVE_MESH_FILES, ANISOTROPY
@@ -136,6 +198,8 @@ module save_arrays_module
   integer :: nglob
   integer :: ier,i,itest
   character(len=MAX_STRING_LEN) :: filename
+  ! Check actual size
+  ! integer :: reclen
 
   ! selects routine for file i/o format
   if (ADIOS_FOR_MESH) then
@@ -190,6 +254,8 @@ module save_arrays_module
   write(IOUT) ystore_unique
   write(IOUT) zstore_unique
 
+  ! write(*,*) "xstore reclength", reclen
+
   write(IOUT) irregular_element_number
   write(IOUT) xix_regular
   write(IOUT) jacobian_regular
@@ -204,6 +270,10 @@ module save_arrays_module
   call save_global_arrays(nspec, gammaystore)
   call save_global_arrays(nspec, gammazstore)
   call save_global_arrays(nspec, jacobianstore)
+
+  ! write test value
+  itest = 10000
+  write(IOUT) itest
 
   ! write(IOUT) xixstore
   ! write(IOUT) xiystore
@@ -221,9 +291,16 @@ module save_arrays_module
   ! write(IOUT) kappastore
   ! write(IOUT) mustore
 
-  write(IOUT)
+
+  ! Converting the logical arrays to integer arrays and writing them as ints
+  ! call save_logical_nspec_array(ispec_is_acoustic)
+  ! call save_logical_nspec_array(ispec_is_elastic)
+  ! call save_logical_nspec_array(ispec_is_poroelastic)
+  ! inquire(iolength=reclen) xstore_unique
+  write(IOUT) ispec_is_acoustic
   write(IOUT) ispec_is_elastic
   write(IOUT) ispec_is_poroelastic
+
 
   ! stamp for checking i/o
   itest = 9999
@@ -236,10 +313,13 @@ module save_arrays_module
 
   ! this array is needed for acoustic simulations but also for elastic simulations with CPML,
   ! thus we allocate it and read it in all cases (whether the simulation is acoustic, elastic, or acoustic/elastic)
-
   call save_global_arrays(nspec, rhostore)
 
   ! write(IOUT) rhostore
+
+  ! write test value
+  itest = 9998
+  write(IOUT) itest
 
   ! elastic
   if (ELASTIC_SIMULATION) then
@@ -253,6 +333,10 @@ module save_arrays_module
     ! write(IOUT) rho_vp
     ! write(IOUT) rho_vs
   endif
+
+  ! Write a test value
+  itest = 9997
+  write(IOUT) itest
 
   ! poroelastic
   if (POROELASTIC_SIMULATION) then
@@ -279,6 +363,10 @@ module save_arrays_module
     ! write(IOUT) rho_vpII
     ! write(IOUT) rho_vsI
   endif
+
+  ! write test value
+  itest = 9996
+  write(IOUT) itest
 
   ! @Lucas & @Congyue need to uncomment this when implementing PML
 
@@ -318,10 +406,23 @@ module save_arrays_module
   ! absorbing boundary surface
   write(IOUT) num_abs_boundary_faces
   if (num_abs_boundary_faces > 0) then
-    write(IOUT) abs_boundary_ispec
-    write(IOUT) abs_boundary_ijk
-    write(IOUT) abs_boundary_jacobian2Dw
-    write(IOUT) abs_boundary_normal
+    ! write(IOUT) abs_boundary_ispec
+    ! write(IOUT) abs_boundary_ijk
+    ! write(IOUT) abs_boundary_jacobian2Dw
+    ! write(IOUT) abs_boundary_normal
+
+    ! Saves the arrays with num faces in the first dimension
+    ! write (IOUT) abs_boundary_ispec
+    ! for iface write (IOUT) abs_boundary_ijk(3, :, iface)
+    ! for iface write (IOUT) abs_boundary_jacobian2Dw(:, iface)
+    ! for iface write (IOUT) abs_boundary_normal(:, :, iface)
+
+    call save_boundary_arrays(num_abs_boundary_faces, &
+                         abs_boundary_ispec, &
+                         abs_boundary_ijk, &
+                         abs_boundary_jacobian2Dw, &
+                         abs_boundary_normal)
+
     if (STACEY_ABSORBING_CONDITIONS .and. (.not. PML_CONDITIONS)) then
       ! store mass matrix contributions
       if (ELASTIC_SIMULATION) then
@@ -336,7 +437,7 @@ module save_arrays_module
   endif
 
   ! stamp for checking i/o so far
-  itest = 9998
+  itest = 9995
   write(IOUT) itest
 
   ! boundaries
@@ -357,39 +458,85 @@ module save_arrays_module
   ! free surface
   write(IOUT) num_free_surface_faces
   if (num_free_surface_faces > 0) then
-    write(IOUT) free_surface_ispec
-    write(IOUT) free_surface_ijk
-    write(IOUT) free_surface_jacobian2Dw
-    write(IOUT) free_surface_normal
+    ! write(IOUT) free_surface_ispec
+    ! write(IOUT) free_surface_ijk
+    ! write(IOUT) free_surface_jacobian2Dw
+    ! write(IOUT) free_surface_normal
+
+    ! Saves the arrays with num faces in the first dimension
+    ! write (IOUT) free_surface_ispec
+    ! for iface write (IOUT) free_surface_ijk(3, :, iface)
+    ! for iface write (IOUT) free_surface_jacobian2Dw(:, iface)
+    ! for iface write (IOUT) free_surface_normal(:, :, iface)
+
+    call save_boundary_arrays(num_free_surface_faces, &
+                         free_surface_ispec, &
+                         free_surface_ijk, &
+                         free_surface_jacobian2Dw, &
+                         free_surface_normal)
   endif
 
   ! acoustic-elastic coupling surface
   write(IOUT) num_coupling_ac_el_faces
   if (num_coupling_ac_el_faces > 0) then
-    write(IOUT) coupling_ac_el_ispec
-    write(IOUT) coupling_ac_el_ijk
-    write(IOUT) coupling_ac_el_jacobian2Dw
-    write(IOUT) coupling_ac_el_normal
+    ! write(IOUT) coupling_ac_el_ispec
+    ! write(IOUT) coupling_ac_el_ijk
+    ! write(IOUT) coupling_ac_el_jacobian2Dw
+    ! write(IOUT) coupling_ac_el_normal
+
+    ! Saves the arrays with num faces in the first dimension
+    call save_boundary_arrays(num_coupling_ac_el_faces, &
+                         coupling_ac_el_ispec, &
+                         coupling_ac_el_ijk, &
+                         coupling_ac_el_jacobian2Dw, &
+                         coupling_ac_el_normal)
+
   endif
 
   ! acoustic-poroelastic coupling surface
   write(IOUT) num_coupling_ac_po_faces
   if (num_coupling_ac_po_faces > 0) then
-    write(IOUT) coupling_ac_po_ispec
-    write(IOUT) coupling_ac_po_ijk
-    write(IOUT) coupling_ac_po_jacobian2Dw
-    write(IOUT) coupling_ac_po_normal
+    ! write(IOUT) coupling_ac_po_ispec
+    ! write(IOUT) coupling_ac_po_ijk
+    ! write(IOUT) coupling_ac_po_jacobian2Dw
+    ! write(IOUT) coupling_ac_po_normal
+
+    ! Saves the arrays with num faces in the first dimension
+    call save_boundary_arrays(num_coupling_ac_po_faces, &
+                         coupling_ac_po_ispec, &
+                         coupling_ac_po_ijk, &
+                         coupling_ac_po_jacobian2Dw, &
+                         coupling_ac_po_normal)
   endif
 
   ! elastic-poroelastic coupling surface
   write(IOUT) num_coupling_el_po_faces
   if (num_coupling_el_po_faces > 0) then
-    write(IOUT) coupling_el_po_ispec
-    write(IOUT) coupling_po_el_ispec
-    write(IOUT) coupling_el_po_ijk
-    write(IOUT) coupling_po_el_ijk
-    write(IOUT) coupling_el_po_jacobian2Dw
-    write(IOUT) coupling_el_po_normal
+
+    ! write(IOUT) coupling_el_po_ispec
+    ! write(IOUT) coupling_el_po_ijk
+    ! write(IOUT) coupling_el_po_jacobian2Dw
+    ! write(IOUT) coupling_el_po_normal
+
+    ! Saves the arrays with num faces in the first dimension
+    call save_boundary_arrays(num_coupling_el_po_faces, &
+                         coupling_el_po_ispec, &
+                         coupling_el_po_ijk, &
+                         coupling_el_po_jacobian2Dw, &
+                         coupling_el_po_normal)
+
+    ! write(IOUT) coupling_po_el_ispec
+    ! write(IOUT) coupling_po_el_ijk
+    ! write(IOUT) coupling_el_po_jacobian2Dw
+    ! write(IOUT) coupling_el_po_normal
+
+    ! Saves the arrays with num faces in the first dimension
+    call save_boundary_arrays(num_coupling_el_po_faces, &
+                         coupling_po_el_ispec, &
+                         coupling_po_el_ijk, &
+                         coupling_el_po_jacobian2Dw, &
+                         coupling_el_po_normal)
+
   endif
 
   ! stamp for checking i/o
